@@ -1,8 +1,10 @@
-"""Subdomain Enumeration Agent — crt.sh (cert transparency) + Shodan."""
+"""Subdomain Enumeration Agent — crt.sh (cert transparency) + HackerTarget."""
+import requests
 import dns.resolver
-from utils.api_client import crt_sh_subdomains, shodan_search
+from utils.api_client import crt_sh_subdomains
 from utils.helpers import log_info, log_success, log_warn
 from database.db import insert_subdomains
+from config.settings import REQUEST_TIMEOUT
 
 # Subdomains that are commonly risky if publicly exposed
 RISKY_KEYWORDS = {"admin", "dev", "staging", "test", "api", "internal", "vpn", "secret", "beta"}
@@ -18,14 +20,10 @@ class SubdomainAgent:
         found_subs.update(ct_subs)
         log_success(f"[SubdomainAgent] crt.sh found {len(ct_subs)} subdomains")
 
-        # Source 2: Shodan
-        shodan_data = shodan_search(f"hostname:.{domain}")
-        if shodan_data and "matches" in shodan_data:
-            for match in shodan_data["matches"]:
-                for hostname in match.get("hostnames", []):
-                    if hostname.endswith(f".{domain}"):
-                        found_subs.add(hostname.lower())
-            log_success(f"[SubdomainAgent] Shodan added extra subdomains")
+        # Source 2: HackerTarget (free, no key required)
+        ht_subs = self._hackertarget(domain)
+        found_subs.update(ht_subs)
+        log_success(f"[SubdomainAgent] HackerTarget found {len(ht_subs)} subdomains")
 
         subdomains = []
         for sub in sorted(found_subs):
@@ -45,6 +43,26 @@ class SubdomainAgent:
             log_success(f"[SubdomainAgent] {len(subdomains)} subdomains saved | {len(risky)} flagged as risky")
 
         return subdomains
+
+    @staticmethod
+    def _hackertarget(domain: str) -> list[str]:
+        try:
+            r = requests.get(
+                "https://api.hackertarget.com/hostsearch/",
+                params={"q": domain},
+                timeout=REQUEST_TIMEOUT,
+            )
+            if r.status_code != 200 or "error" in r.text.lower():
+                return []
+            subs = []
+            for line in r.text.strip().splitlines():
+                parts = line.split(",")
+                if parts and parts[0].endswith(f".{domain}"):
+                    subs.append(parts[0].strip().lower())
+            return subs
+        except Exception as e:
+            log_warn(f"[SubdomainAgent] HackerTarget failed: {e}")
+            return []
 
     @staticmethod
     def _resolve_ip(hostname: str) -> str | None:
