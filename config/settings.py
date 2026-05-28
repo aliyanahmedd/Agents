@@ -8,10 +8,9 @@ BASE_DIR = Path(__file__).parent.parent
 
 # API Keys
 HUNTER_API_KEY = os.getenv("HUNTER_API_KEY", "")
-SHODAN_API_KEY = os.getenv("SHODAN_API_KEY", "")
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
-HIBP_API_KEY = os.getenv("HIBP_API_KEY", "")
+BREACHDIRECTORY_API_KEY = os.getenv("BREACHDIRECTORY_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # Timeouts & rate limits

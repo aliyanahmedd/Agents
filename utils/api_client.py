@@ -3,10 +3,9 @@ import time
 import requests
 from config.settings import (
     HUNTER_API_KEY,
-    SHODAN_API_KEY,
     VIRUSTOTAL_API_KEY,
     GITHUB_TOKEN,
-    HIBP_API_KEY,
+    BREACHDIRECTORY_API_KEY,
     REQUEST_TIMEOUT,
     RATE_LIMIT_DELAY,
 )
@@ -41,21 +40,6 @@ def hunter_email_verify(email: str) -> dict | None:
     )
 
 
-# ── Shodan ────────────────────────────────────────────────────────────────────
-
-def shodan_host(ip: str) -> dict | None:
-    return _get(
-        f"https://api.shodan.io/shodan/host/{ip}",
-        params={"key": SHODAN_API_KEY},
-    )
-
-
-def shodan_search(query: str) -> dict | None:
-    return _get(
-        "https://api.shodan.io/shodan/host/search",
-        params={"key": SHODAN_API_KEY, "query": query, "minify": True},
-    )
-
 
 # ── VirusTotal ────────────────────────────────────────────────────────────────
 
@@ -73,28 +57,17 @@ def virustotal_check_ip(ip: str) -> dict | None:
     )
 
 
-# ── Have I Been Pwned ─────────────────────────────────────────────────────────
+# ── BreachDirectory ───────────────────────────────────────────────────────────
 
-def hibp_check_email(email: str) -> list | None:
-    headers = {
-        "hibp-api-key": HIBP_API_KEY,
-        "User-Agent": "OSINT-Agent/1.0",
-    }
-    try:
-        r = requests.get(
-            f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}",
-            headers=headers,
-            timeout=REQUEST_TIMEOUT,
-        )
-        if r.status_code == 404:
-            return []          # clean — no breaches found
-        r.raise_for_status()
-        return r.json()
-    except requests.RequestException as e:
-        print(f"[HIBP ERROR] {e}")
-        return None
-    finally:
-        time.sleep(RATE_LIMIT_DELAY)
+def breachdirectory_check_email(email: str) -> dict | None:
+    return _get(
+        "https://breachdirectory.p.rapidapi.com/",
+        params={"func": "auto", "term": email},
+        headers={
+            "X-RapidAPI-Key": BREACHDIRECTORY_API_KEY,
+            "X-RapidAPI-Host": "breachdirectory.p.rapidapi.com",
+        },
+    )
 
 
 # ── GitHub ────────────────────────────────────────────────────────────────────
