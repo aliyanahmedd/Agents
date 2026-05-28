@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OSINT Report — {{ domain }}</title>
+  <style>
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --accent: #58a6ff; --danger: #f85149;
+      --warn: #e3b341; --ok: #3fb950;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; padding: 2rem; }
+    h1 { color: var(--accent); font-size: 1.8rem; margin-bottom: .25rem; }
+    .meta { color: #8b949e; font-size: .85rem; margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+    .card .score { font-size: 2.5rem; font-weight: bold; }
+    .card .label { font-size: .75rem; color: #8b949e; margin-top: .25rem; }
+    .high { color: var(--danger); }
+    .med  { color: var(--warn); }
+    .low  { color: var(--ok); }
+    section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    section h2 { color: var(--accent); font-size: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; color: #8b949e; padding: .4rem .6rem; border-bottom: 1px solid var(--border); }
+    td { padding: .4rem .6rem; border-bottom: 1px solid #21262d; }
+    .badge { display: inline-block; padding: .15rem .5rem; border-radius: 4px; font-size: .75rem; }
+    .badge-danger { background: #3d1f1f; color: var(--danger); }
+    .badge-warn  { background: #2d2208; color: var(--warn); }
+    .badge-ok    { background: #1a2f1a; color: var(--ok); }
+    pre { white-space: pre-wrap; font-size: .85rem; line-height: 1.6; color: var(--text); }
+    .disclaimer { margin-top: 2rem; padding: 1rem; border: 1px solid var(--warn); border-radius: 8px; color: var(--warn); font-size: .8rem; }
+  </style>
+</head>
+<body>
+
+<h1>OSINT Intelligence Report</h1>
+<div class="meta">Target: <strong>{{ domain }}</strong> &nbsp;|&nbsp; Generated: {{ generated_at }}</div>
+
+<!-- Risk Score Cards -->
+<div class="grid">
+  {% set total = scores.get('total', 0) %}
+  <div class="card">
+    <div class="score {% if total >= 7 %}high{% elif total >= 4 %}med{% else %}low{% endif %}">{{ "%.1f"|format(total) }}</div>
+    <div class="label">Overall Risk / 10</div>
+  </div>
+  <div class="card">
+    <div class="score {% if scores.get('email',0) >= 7 %}high{% elif scores.get('email',0) >= 4 %}med{% else %}low{% endif %}">{{ "%.1f"|format(scores.get('email', 0)) }}</div>
+    <div class="label">Email Exposure</div>
+  </div>
+  <div class="card">
+    <div class="score {% if scores.get('subdomain',0) >= 7 %}high{% elif scores.get('subdomain',0) >= 4 %}med{% else %}low{% endif %}">{{ "%.1f"|format(scores.get('subdomain', 0)) }}</div>
+    <div class="label">Subdomain Risk</div>
+  </div>
+  <div class="card">
+    <div class="score {% if scores.get('breach',0) >= 7 %}high{% elif scores.get('breach',0) >= 4 %}med{% else %}low{% endif %}">{{ "%.1f"|format(scores.get('breach', 0)) }}</div>
+    <div class="label">Breach Risk</div>
+  </div>
+  <div class="card">
+    <div class="score {% if scores.get('threat',0) >= 7 %}high{% elif scores.get('threat',0) >= 4 %}med{% else %}low{% endif %}">{{ "%.1f"|format(scores.get('threat', 0)) }}</div>
+    <div class="label">Threat Intel</div>
+  </div>
+</div>
+
+<!-- AI Analysis -->
+<section>
+  <h2>AI Analysis</h2>
+  <pre>{{ analysis }}</pre>
+</section>
+
+<!-- Emails -->
+<section>
+  <h2>Email Intelligence ({{ emails|length }} found)</h2>
+  <table>
+    <tr><th>Email</th><th>Name</th><th>Position</th><th>Confidence</th></tr>
+    {% for e in emails %}
+    <tr>
+      <td>{{ e.email }}</td>
+      <td>{{ e.first_name }} {{ e.last_name }}</td>
+      <td>{{ e.position or '–' }}</td>
+      <td>
+        <span class="badge {% if e.confidence >= 80 %}badge-ok{% elif e.confidence >= 50 %}badge-warn{% else %}badge-danger{% endif %}">
+          {{ e.confidence }}%
+        </span>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No emails discovered</td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+<!-- Subdomains -->
+<section>
+  <h2>Subdomains ({{ subdomains|length }} found)</h2>
+  <table>
+    <tr><th>Subdomain</th><th>IP</th><th>Risk</th></tr>
+    {% for s in subdomains %}
+    <tr>
+      <td>{{ s.subdomain }}</td>
+      <td>{{ s.ip or '–' }}</td>
+      <td>
+        {% if s.risk_flag %}
+          <span class="badge badge-danger">RISKY</span>
+        {% else %}
+          <span class="badge badge-ok">OK</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">No subdomains found</td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+<!-- Breaches -->
+<section>
+  <h2>Breach Intelligence ({{ breaches|length }} records)</h2>
+  <table>
+    <tr><th>Email</th><th>Breach</th><th>Date</th></tr>
+    {% for b in breaches %}
+    <tr>
+      <td>{{ b.email }}</td>
+      <td><span class="badge badge-danger">{{ b.breach_name }}</span></td>
+      <td>{{ b.breach_date or '–' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">No breaches found</td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+<!-- Threat Intel -->
+<section>
+  <h2>Threat Intelligence</h2>
+  <table>
+    <tr><th>Indicator</th><th>Type</th><th>Malicious Engines</th><th>VT Link</th></tr>
+    {% for t in threat_intel %}
+    <tr>
+      <td>{{ t.indicator }}</td>
+      <td>{{ t.indicator_type }}</td>
+      <td>
+        {% if t.malicious %}
+          <span class="badge badge-danger">{{ t.engine_hits }}</span>
+        {% else %}
+          <span class="badge badge-ok">0</span>
+        {% endif %}
+      </td>
+      <td><a href="{{ t.vt_link }}" target="_blank" style="color:var(--accent)">View</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No threat intel data</td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+<!-- Tech Stack -->
+<section>
+  <h2>Tech Stack</h2>
+  {% for t in tech.get('technologies', []) %}
+    <span class="badge badge-warn" style="margin:.2rem">{{ t }}</span>
+  {% else %}
+    <span>Unknown</span>
+  {% endfor %}
+</section>
+
+<div class="disclaimer">
+  ⚠ This report was generated for AUTHORIZED reconnaissance only. Unauthorized use may violate
+  computer fraud laws (CFAA, GDPR, PECA). Do not distribute without consent.
+</div>
+
+</body>
+</html>

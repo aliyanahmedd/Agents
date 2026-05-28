@@ -1,0 +1,37 @@
+# Secrets — never commit
+.env
+config/api_keys.py
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# Data & cache
+*.db
+*.sqlite
+*.sqlite3
+requests_cache/
+*.cache
+
+# Reports output (generated at runtime)
+output/reports/
+output/graphs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
